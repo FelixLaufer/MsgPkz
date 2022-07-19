@@ -47,5 +47,5 @@ client.subscribe(
 ```
 
 ## Requires
-- Boost::system >= 1.70
+- Boost::system ≥ 1.70
 
