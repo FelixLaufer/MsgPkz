@@ -10,10 +10,12 @@
 #include <functional>
 #include <thread>
 
-template <typename TStream, bool SHARED = false>
-class StreamBase : public std::enable_shared_from_this<StreamBase<TStream, SHARED>>
+template <typename TStream, bool IsShared = false>
+class StreamBase : public std::enable_shared_from_this<StreamBase<TStream, IsShared>>
 {
 protected:
+  static constexpr bool VERBOSE = false;
+
   StreamBase()
     : stream_()
     , readStrand_()
@@ -24,14 +26,14 @@ protected:
 
   virtual ~StreamBase() {}
 
-  template<typename R = std::shared_ptr<StreamBase<TStream, SHARED>>>
-  typename std::enable_if<!SHARED, R>::type getSharedFromThisOrNull()
+  template<typename R = std::shared_ptr<StreamBase<TStream, IsShared>>>
+  typename std::enable_if<!IsShared, R>::type getSharedFromThisOrNull()
   {
     return R{};
   }
 
-  template<typename R = std::shared_ptr<StreamBase<TStream, SHARED>>>
-  typename std::enable_if<SHARED, R>::type getSharedFromThisOrNull()
+  template<typename R = std::shared_ptr<StreamBase<TStream, IsShared>>>
+  typename std::enable_if<IsShared, R>::type getSharedFromThisOrNull()
   {
     return this->shared_from_this();
   }
@@ -53,7 +55,8 @@ protected:
     }
     catch (...)
     {
-      std::cerr << "StreamBase: unable to write (blocking)." << std::endl;
+      if (VERBOSE)
+        std::cerr << "StreamBase: unable to write (blocking)." << std::endl;
       errorCallback_();
     }
   }
@@ -70,14 +73,16 @@ protected:
           {
             if (error || bytesTransferred < size)
             {
-              std::cerr << "StreamBase: unable to write (async)." << std::endl;
+              if (VERBOSE)
+                std::cerr << "StreamBase: unable to write (async)." << std::endl;
               errorCallback_();
             }
           }));
     }
     catch(...)
     {
-      std::cerr << "StreamBase: unable to write (async)." << std::endl;
+      if (VERBOSE)
+        std::cerr << "StreamBase: unable to write (async)." << std::endl;
       errorCallback_();
     }
   }
@@ -93,7 +98,8 @@ protected:
     }
     catch (...)
     {
-      std::cerr << "StreamBase: unable to read (blocking)." << std::endl;
+      if (VERBOSE)
+        std::cerr << "StreamBase: unable to read (blocking)." << std::endl;
       errorCallback_();
     }
   }
@@ -110,7 +116,8 @@ protected:
           {
             if (error)
             {
-              std::cerr << "StreamBase: unable to read." << std::endl;
+              if (VERBOSE)
+                std::cerr << "StreamBase: unable to read (async)." << std::endl;
               errorCallback_();
             }
             else
@@ -125,7 +132,8 @@ protected:
     }
     catch (...)
     {
-      std::cerr << "StreamBase: unable to read." << std::endl;
+      if (VERBOSE)
+        std::cerr << "StreamBase: unable to read (async)." << std::endl;
       errorCallback_();
     }
   }
