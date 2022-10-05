@@ -1,3 +1,5 @@
+#ifndef ARDUINO
+
 #ifndef _MSG_PKZ_SERIAL_SERVER_H_
 #define _MSG_PKZ_SERIAL_SERVER_H_
 
@@ -73,5 +75,7 @@ public:
     );
   }
 };
+
+#endif
 
 #endif
