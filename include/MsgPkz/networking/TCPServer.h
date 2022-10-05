@@ -20,6 +20,8 @@ public:
       : StreamShared<boost::asio::ip::tcp::socket>(std::move(socket), io)
     {
       start();
+      endpoint_ = stream_->remote_endpoint();
+      address_ = endpoint_.address().to_string() + ":" + std::to_string(endpoint_.port());
     }
 
     virtual ~TCPEndpoint()
@@ -37,7 +39,7 @@ public:
     {
       return endpoint_;
     }
-    
+
     const std::string& getAddress() const
     {
       return address_;
@@ -108,12 +110,114 @@ public:
     acceptedCallback_ = std::move(onClientAccepted);
   }
 
-  void onClientLost(std::function<void(const std::string&)> onClientLost)
+  void onClientDisconnected(std::function<void(const std::string&)> onClientLost)
   {
     lostCallback_ = std::move(onClientLost);
   }
 
+  void sendToWait(const std::string& client, const ByteStream& bs)
+  {
+    forClient(client, [&bs](const std::shared_ptr<TCPEndpoint> c) { c->writeWait(bs); });
+  }
+
+  void sendToAsync(const std::string& client, const ByteStream& bs)
+  {
+    forClient(client, [&bs](const std::shared_ptr<TCPEndpoint> c) { c->writeAsync(bs); });
+  }
+
+  void sendWait(const ByteStream& bs)
+  {
+    foreachClient([&bs](const std::shared_ptr<TCPEndpoint> c) { c->writeWait(bs); });
+  }
+
+  void sendAsync(const ByteStream& bs)
+  {
+    foreachClient([&bs](const std::shared_ptr<TCPEndpoint> c) { c->writeAsync(bs); });
+  }
+
+  template <typename TReadCallback>
+  void receiveFromWait(const std::string& client, TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    forClient(client, [&readCallback, delimiter](const std::shared_ptr<TCPEndpoint> c)
+    {
+      c->readUntilWait(std::forward<TReadCallback>(readCallback), delimiter, false);
+    });
+  }
+
+  template <typename TKeepAlive, typename TReadCallback>
+  void receiveFromAsync(const std::string& client, TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    forClient(client, [&, delimiter](const std::shared_ptr<TCPEndpoint> c)
+    {
+      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, false);
+    });
+  }
+
+  template <typename TReadCallback>
+  void receiveWait(TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    foreachClient([&, delimiter](const std::shared_ptr<TCPEndpoint> c)
+    {
+      c->readUntilWait(std::forward<TReadCallback>(readCallback), delimiter, false);
+    });
+  }
+
+  template <typename TKeepAlive, typename TReadCallback>
+  void receiveAsync(TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    foreachClient([&, delimiter](const std::shared_ptr<TCPEndpoint> c)
+    {
+      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, false);
+    });
+  }
+
+  template <typename TKeepAlive, typename TReadCallback>
+  void subscribeTo(const std::string& client, TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    forClient(client, [&, delimiter](const std::shared_ptr<TCPEndpoint> c)
+    {
+      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, true);
+    });
+  }
+
+  template <typename TKeepAlive, typename TReadCallback>
+  void subscribe(TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    foreachClient([&, delimiter](const std::shared_ptr<TCPEndpoint> c)
+    {
+      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, true);
+    });
+  }
+
 protected:
+  void forClient(const std::string& name, const std::function<void(const std::shared_ptr<TCPEndpoint>)>& func)
+  {
+    mtx_.lock();
+    if (clients_.count(name))
+    {
+      if (clients_.at(name))
+        func(clients_.at(name));
+      else
+        clients_.erase(name);
+    }  
+    mtx_.unlock();
+  }
+
+  void foreachClient(const std::function<void(const std::shared_ptr<TCPEndpoint>)>& func)
+  {
+    mtx_.lock();
+    auto it = clients_.begin();
+    while (it != clients_.end())
+    {
+      if (it->second)
+        func(it++->second);
+      else
+        it = clients_.erase(it);
+    }
+    mtx_.unlock();
+  }
+
+private:
   void accept()
   {
     stream_.emplace(io_);
@@ -130,18 +234,23 @@ protected:
           mtx_.lock();
           clients_.insert({ client->getAddress(), client });
           mtx_.unlock();
-	  auto weak = std::weak_ptr<TCPEndpoint>(client);
+		      const auto weak = std::weak_ptr<TCPEndpoint>(client);
           client->onError(
             [&, weak]
-            {          
+            {         
               const auto shared = weak.lock();
               if (shared)
               {
                 try
-		{
+                {
                   const std::string clientAddress = shared->getAddress();
-                  clients_.at(clientAddress) = nullptr;
-                  lostCallback_(clientAddress); 
+                  mtx_.lock();
+                  if (clients_.count(clientAddress))
+                  {
+                    clients_.erase(clientAddress);
+                    lostCallback_(clientAddress); 
+                  }
+                  mtx_.unlock();
                 }
                 catch(...)
                 { }
@@ -157,7 +266,6 @@ protected:
   boost::asio::ip::tcp::acceptor acceptor_;
   std::mutex mtx_;
   std::map<std::string, std::shared_ptr<TCPEndpoint>> clients_;
-  std::vector<std::string> invalidClients_;
   std::function<void(const std::string&)> acceptedCallback_;
   std::function<void(const std::string&)> lostCallback_;
 };
