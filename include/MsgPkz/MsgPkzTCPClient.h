@@ -1,3 +1,5 @@
+#ifndef ARDUINO
+
 #ifndef _MSG_PKZ_TCP_CLIENT_H_
 #define _MSG_PKZ_TCP_CLIENT_H_
 
@@ -67,5 +69,7 @@ public:
     );
   }
 };
+
+#endif
 
 #endif
