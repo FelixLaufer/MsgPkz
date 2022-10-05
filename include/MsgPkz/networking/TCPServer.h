@@ -33,15 +33,19 @@ public:
     using StreamShared<boost::asio::ip::tcp::socket>::readUntilWait;
     using StreamShared<boost::asio::ip::tcp::socket>::readUntilAsync;
 
-    boost::asio::ip::tcp::endpoint getEndpoint() const
+    const boost::asio::ip::tcp::endpoint& getEndpoint() const
     {
-      return stream_->remote_endpoint();
+      return endpoint_;
+    }
+    
+    const std::string& getAddress() const
+    {
+      return address_;
     }
 
-    std::string getName() const
-    {
-      return getEndpoint().address().to_string() + ":" + std::to_string(getEndpoint().port());
-    }
+    protected:
+      boost::asio::ip::tcp::endpoint endpoint_;
+      std::string address_;
   };
 
   TCPServer(const uint16_t port = 22)
@@ -124,26 +128,27 @@ protected:
           stream_->set_option(boost::asio::socket_base::receive_buffer_size(65536));
           const auto client = std::make_shared<TCPEndpoint>(std::move(*stream_), io_);
           mtx_.lock();
-          clients_.insert({ client->getName(), client });
+          clients_.insert({ client->getAddress(), client });
           mtx_.unlock();
-		      auto weak = std::weak_ptr<TCPEndpoint>(client);
+	  auto weak = std::weak_ptr<TCPEndpoint>(client);
           client->onError(
             [&, weak]
             {          
               const auto shared = weak.lock();
               if (shared)
               {
-                try {
-                  const std::string clientName = shared->getName();
-                  clients_.at(clientName) = nullptr;
-                  lostCallback_(clientName);
+                try
+		{
+                  const std::string clientAddress = shared->getAddress();
+                  clients_.at(clientAddress) = nullptr;
+                  lostCallback_(clientAddress); 
                 }
                 catch(...)
                 { }
               }
             });
           if (acceptedCallback_)
-            acceptedCallback_(client->getName());
+            acceptedCallback_(client->getAddress());
         }
         accept();
       });
