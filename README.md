@@ -1,4 +1,4 @@
-# MsgPkz
+# MsgPkz - Lightweight Message Packetizer
 This is a lightweight header-only messaging library with a core implementation that does not rely on any dynamic memory.
 It is suitable for systems with very limited ressources such as microcontrollers.
 MsgPkz originated from a project where an embedded application processor (Qualcomm® RB5) had to communicate wirelessly with an external server via TCP and with a tiny microcontroller via UART.
