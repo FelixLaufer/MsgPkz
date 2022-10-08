@@ -5,7 +5,7 @@ MsgPkz originated from a project where an embedded application processor (Qualco
 For this reason, there are TCP and serial endpoints available as well as a serial client implementation for Arduino-like boards. Thanks to [this guy](https://github.com/hideakitai) for the amazing Arduino port of [STL-like containers](https://github.com/hideakitai/ArxContainer) and [type traits](https://github.com/hideakitai/ArxTypeTraits).
 
 Messages are identified and depacketized with an unique 1-byte id, packets can consist of any number and kind of messages (adapt the maximum buffer sizes, if necessary).
-You can subscribe to specific packets by explicitely describing their message signature via lambda functions. The code to handle the packets with types of messages that you are interested in is actually generated at compile time. There is some happy meta template programming magic going on in the background... :upside_down_face:
+You can subscribe to specific packets by explicitely describing their message signature via lambda functions. The code to handle the packets with types of messages that you are interested in is actually generated at compile time. There is some happy meta template programming magic going on in the background.
 Feel free to customize the message types to your needs. Just make sure that the size property sums up to the number of bytes of your payload.
 
 ## Features
