@@ -33,6 +33,34 @@ public:
   {
     stop();
   }
+
+  void sendWait(ByteStream& bs)
+  {
+    writeWait(bs);
+  }
+
+  void sendAsync(ByteStream& bs)
+  {
+    writeAsync(bs);
+  }
+
+  template <typename TReadCallback>
+  void receiveWait(TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    readUntilWait(readCallback, delimiter, false);
+  }
+
+  template <typename TReadCallback>
+  void receiveAsync(TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    readUntilAsync(std::forward<TReadCallback>(readCallback), delimiter, false);
+  }
+
+ template <typename TReadCallback>
+  void subscribe(TReadCallback&& readCallback, const uint8_t delimiter)
+  {
+    readUntilAsync(std::forward<TReadCallback>(readCallback), delimiter, true);
+  }
 };
 
 #endif
