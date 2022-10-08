@@ -18,7 +18,7 @@ public:
   template <typename... TMessages>
   void send(TMessages&&... messages)
   {
-    write(std::move(packetizer_.packetize(std::forward<TMessages>(messages)...)));
+    write(packetizer_.packetize(std::forward<TMessages>(messages)...));
   }
 
   template <typename... TMessageCallbacks>
