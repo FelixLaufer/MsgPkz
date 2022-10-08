@@ -162,35 +162,36 @@ public:
     });
   }
 
-  template <typename TKeepAlive, typename TReadCallback>
-  void receiveAsync(TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  template <typename TReadCallback>
+  void receiveAsync(TReadCallback&& readCallback, const uint8_t delimiter)
   {
     foreachClient([&, delimiter](const std::shared_ptr<TCPEndpoint> c)
     {
-      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, false);
+      c->readUntilAsync(std::forward<TReadCallback>(readCallback), delimiter, false);
     });
   }
 
-  template <typename TKeepAlive, typename TReadCallback>
-  void subscribeTo(const std::string& client, TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  template <typename TReadCallback>
+  void subscribeTo(const std::string& client, TReadCallback&& readCallback, const uint8_t delimiter)
   {
     forClient(client, [&, delimiter](const std::shared_ptr<TCPEndpoint> c)
     {
-      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, true);
+      c->readUntilAsync(std::forward<TReadCallback>(readCallback), delimiter, true);
     });
   }
 
-  template <typename TKeepAlive, typename TReadCallback>
-  void subscribe(TKeepAlive&& keepAlive, TReadCallback&& readCallback, const uint8_t delimiter)
+  template <typename TReadCallback>
+  void subscribe(TReadCallback&& readCallback, const uint8_t delimiter)
   {
     foreachClient([&, delimiter](const std::shared_ptr<TCPEndpoint> c)
     {
-      c->readUntilAsync(std::forward<TKeepAlive>(keepAlive), std::forward<TReadCallback>(readCallback), delimiter, true);
+      c->readUntilAsync(*this, std::forward<TReadCallback>(readCallback), delimiter, true);
     });
   }
 
 protected:
-  void forClient(const std::string& name, const std::function<void(const std::shared_ptr<TCPEndpoint>)>& func)
+  template <typename TFunction>
+  void forClient(const std::string& name, TFunction&& func)
   {
     mtx_.lock();
     if (clients_.count(name))
@@ -203,11 +204,11 @@ protected:
     mtx_.unlock();
   }
 
-  void foreachClient(const std::function<void(const std::shared_ptr<TCPEndpoint>)>& func)
+  template <typename TFunction>
+  void foreachClient(TFunction&& func)
   {
     mtx_.lock();
-    auto it = clients_.begin();
-    while (it != clients_.end())
+    for (auto it = clients_.begin(); it != clients_.end();)
     {
       if (it->second)
         func(it++->second);
@@ -253,7 +254,7 @@ private:
                   mtx_.unlock();
                 }
                 catch(...)
-                { }
+                {}
               }
             });
           if (acceptedCallback_)
