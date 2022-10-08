@@ -1,7 +1,7 @@
 #ifndef ARDUINO
 
-#ifndef _SEC_TCP_CLIENT_H_
-#define _SEC_TCP_CLIENT_H_
+#ifndef _MSG_PKZ_TCP_CLIENT_H_
+#define _MSG_PKZ_TCP_CLIENT_H_
 
 #include "packetizing/Packetizer.h"
 #include "networking/TCPClient.h"
