@@ -1,7 +1,7 @@
 #ifndef ARDUINO
 
 #ifndef _MSG_PKZ_TCP_SERVER_H_
-#define _MSG_PKZC_TCP_SERVER_H_
+#define _MSG_PKZ_TCP_SERVER_H_
 
 #include "packetizing/Packetizer.h"
 #include "networking/TCPServer.h"
@@ -95,9 +95,9 @@ public:
   template <typename... TMessageCallbacks>
   void subscribe(TMessageCallbacks&&... messageCallbacks)
   {
-    TCPServer::subscribe(*this, [&](decltype(*this)&& self, ByteStream& ps)
+    TCPServer::subscribe([&](ByteStream& ps)
     {
-      self.depacketize(ps, std::forward<TMessageCallbacks>(messageCallbacks)...);
+      depacketize(ps, std::forward<TMessageCallbacks>(messageCallbacks)...);
     }, PACKET_DELIMITER);
   }
 };
